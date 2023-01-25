@@ -1,0 +1,11 @@
+---
+#test
+- name: Run
+  hosts: all
+  become: true
+  connection: local
+  #vars:
+  #  ansible_python_interpreter: /usr/local/bin/python
+  roles:
+    - project_x
+

@@ -1,0 +1,15 @@
+---
+version: '{{ docker_compose_version}}'
+services:
+  nginx:
+    container_name: nginx
+    hostname: nginx
+    image: {{ docker_reg}}:{{ tag_1}}
+    networks: ["test"]
+    volumes:
+      - {{ base_dir }}/configs/index.html:/usr/share/nginx/html/index.html
+    ports:
+      - '80:80'
+
+networks:
+    test:

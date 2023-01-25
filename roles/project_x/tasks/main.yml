@@ -1,0 +1,119 @@
+---
+- name: Clean Up
+  block:
+    - name: Get directory
+      stat:
+        path: "{{ base_dir }}"
+      register: check_dir
+
+    - name: Remove container
+      docker_compose:
+        project_src: "{{ base_dir }}"
+        state: absent
+        timeout: 300
+      when: check_dir.stat.exists
+
+    - name: Remove images
+      docker_image:
+        name: "{{ docker_reg }}"
+        tag: "{{ tag_1 }}"
+        state: absent
+  when: inventory_hostname == "localhost"
+  tags: "clean"
+
+- name: Build image
+  docker_image:
+    build:
+      path: roles/project_x/files/build
+      nocache: true
+    name: "{{ docker_reg }}"
+    tag: "{{ tag_1 }}"
+    source: build
+    state: present
+  tags: "build"
+
+- name: Deploy
+  block:
+    - name: Create directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ docker_user }}"
+        mode: 0750
+      with_items:
+        - "{{ base_dir }}"
+        - "{{ base_dir }}/configs"
+
+    - name: Upload docker-compose file
+      template:
+        src: docker-compose.yml.j2
+        dest: "{{ base_dir }}/docker-compose.yml"
+        owner: "{{ docker_user }}"
+        mode: 0644
+
+    - name: Nginx web page file upload
+      template:
+        src: index.html.j2
+        dest: "{{ base_dir }}/configs/index.html"
+        owner: "{{ docker_user }}"
+        mode: 0640
+
+    - name: Bring docker container Up
+      docker_compose:
+        project_src: "{{ base_dir }}"
+        state: present
+        timeout: 300
+        pull: "{{ docker_pull }}"
+  tags: "deploy"
+
+- name: Test
+  block:
+    - name: Wait until port is reachable
+      wait_for:
+        host: localhost
+        port: 80
+        delay: 5
+        state: drained
+
+    - name: Get to endpoint
+      uri:
+        url: "{{ endpoint }}"
+        return_content: true
+        status_code: 200 
+      register: boom
+      failed_when: "'This is it' not in boom.content"
+
+    - name: Debug
+      debug:
+        msg: "{{ boom }}"
+  tags: "test"
+
+- name: Push to dockerhub
+  block:
+    - name: Log into dockerhub registry and force re-authorization
+      docker_login:
+        registry: docker.io
+        username: "{{ dockerhub_user }}"
+        password: "{{ vault_dockerhub }}"
+        reauthorize: true
+
+    - name: Push image
+      docker_image:
+        build:
+          path: roles/project_x/files/build
+          nocache: true
+        name: "{{ docker_reg }}"
+        repository: "{{ docker_reg }}:{{ tag_1 }}"
+        push: "{{ docker_push }}"
+        source: build
+        state: present
+  tags: "push"
+
+
+
+        
+
+
+
+
+

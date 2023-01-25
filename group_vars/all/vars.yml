@@ -1,0 +1,10 @@
+---
+# Registry
+docker_reg: "set_your_dockerhub_repository_here"
+tag_1: "1.0.0"
+docker_user: root
+docker_group: staff
+base_dir: "/opt/project_x"
+docker_compose_version: 3.3
+docker_push: true
+dockerhub_user: youruser
